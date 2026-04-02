@@ -25,7 +25,7 @@ api:
 
 ota:
   - platform: esphome
-    password: "a2e1e58fd5f2454c1dff558c30810ee4"
+    password: !secret ota_rotaryencoder_1_password
 
 wifi:
   ssid: !secret wifi_ssid
@@ -47,6 +47,18 @@ mqtt:
     - topic: "home/heater/heating_active"
       then:
         - lambda: id(heating_active) = (x == "true" || x == "1");
+    - topic: "home/hotwater/temp"
+      then:
+        - lambda: id(hw_temp) = atof(x.c_str());
+    - topic: "home/hotwater/minutes"
+      then:
+        - lambda: id(hw_minutes) = atof(x.c_str());
+    - topic: "home/temperatures/outside"
+      then:
+        - lambda: id(outside_temp) = atof(x.c_str());
+    - topic: "home/temperatures/inside"
+      then:
+        - lambda: id(inside_temp) = atof(x.c_str());
 
 # ── SPI (VSPI) ────────────────────────────────────────────────────────
 spi:
@@ -90,23 +102,41 @@ globals:
     initial_value: '0'
   - id: num_controls
     type: int
-    initial_value: '1'
+    initial_value: '3'
   - id: editing_mode
     type: bool
     initial_value: 'false'
   - id: target_temp
     type: float
-    initial_value: '21.0'
+    initial_value: '18.0'
   - id: current_temp
     type: float
     initial_value: '0.0'
   - id: heating_active
     type: bool
     initial_value: 'false'
-  - id: heater_mode
-    type: int
-    initial_value: '1'
+  - id: hw_temp
+    type: float
+    initial_value: '58.0'
+  - id: hw_minutes
+    type: float
+    initial_value: '45.0'
+  - id: outside_temp
+    type: float
+    initial_value: '5.0'
+  - id: inside_temp
+    type: float
+    initial_value: '21.0'
+  - id: was_sleeping
+    type: bool
+    initial_value: 'false'
   - id: sleep_ticks
+    type: int
+    initial_value: '0'
+  - id: enc_last_dir
+    type: int
+    initial_value: '0'   # 1=CW, -1=CCW, 0=none
+  - id: enc_last_ms
     type: int
     initial_value: '0'
 
@@ -135,9 +165,9 @@ script:
   - id: wake_screen
     then:
       - lambda: |-
-          bool was_asleep = id(sleep_ticks) >= $DIM_TIMEOUT_TICKS;
+          id(was_sleeping) = (id(sleep_ticks) >= $DIM_TIMEOUT_TICKS);
           id(sleep_ticks) = 0;
-          if (was_asleep) {
+          if (id(was_sleeping)) {
             auto call = id(backlight).turn_on();
             call.set_brightness(1.0);
             call.set_transition_length(200);
@@ -153,158 +183,177 @@ display:
     reset_pin: GPIO2
     invert_colors: true
     color_order: bgr
-    data_rate: 4MHz
-    rotation: 90°
+    data_rate: 20MHz
+    rotation: 0°
     dimensions:
-      height: 240
-      width: 320
-    update_interval: 500ms
+      height: 320
+      width: 240
+    update_interval: 50ms
     lambda: |-
       bool sleeping = id(sleep_ticks) >= $SLEEP_TIMEOUT_TICKS;
 
       if (sleeping) {
         it.fill(Color(0x02, 0x04, 0x0A));
-        it.print(160, 106, id(font_tiny), Color(0x0D, 0x1A, 0x2A),
+        it.print(120, 152, id(font_tiny), Color(0x0D, 0x1A, 0x2A),
                  TextAlign::CENTER, "HEATER CONTROLLER");
-        it.print(160, 124, id(font_tiny), Color(0x08, 0x12, 0x20),
-                 TextAlign::CENTER, "-- push any button to wake --");
+        it.print(120, 168, id(font_tiny), Color(0x08, 0x12, 0x20),
+                 TextAlign::CENTER, "-- push to wake --");
         return;
       }
 
       it.fill(Color(0x08, 0x0C, 0x14));
 
-      it.filled_rectangle(0, 0, 320, 26, Color(0x0C, 0x15, 0x20));
+      // ── Top bar ──
+      it.filled_rectangle(0, 0, 240, 26, Color(0x0C, 0x15, 0x20));
       it.print(8, 6, id(font_tiny), Color(0x3A, 0x50, 0x70),
                TextAlign::TOP_LEFT, "HEATER CONTROLLER");
-      it.filled_circle(309, 13, 4, Color(0x20, 0x80, 0x40));
+      Color dot_col = id(heating_active)
+        ? Color(0xE0, 0x55, 0x20) : Color(0x20, 0x80, 0x40);
+      it.filled_circle(230, 13, 4, dot_col);
 
-      int cx = 95, cy = 150, R = 72;
-      float minT = 5.0f, maxT = 35.0f;
-      float curFrac = std::min(1.0f, std::max(0.0f,
-                       (id(current_temp) - minT) / (maxT - minT)));
-      float tgtFrac = std::min(1.0f, std::max(0.0f,
-                       (id(target_temp)  - minT) / (maxT - minT)));
-      float startA = M_PI * 0.75f;
-      float arcSpan = M_PI * 1.5f;
-      int   segments = 60;
-
-      for (int s = 0; s < segments; s++) {
-        float a = startA + arcSpan * s / (float)segments;
-        int tx = cx + (int)(R * cosf(a));
-        int ty = cy + (int)(R * sinf(a));
-        it.filled_circle(tx, ty, 4, Color(0x0F, 0x1E, 0x2E));
+      // ── Screen indicator dots ──
+      for (int i = 0; i < id(num_controls); i++) {
+        Color pip = (i == id(selected_control))
+          ? Color(0x4A, 0xB0, 0xE0) : Color(0x18, 0x28, 0x40);
+        it.filled_circle(116 + i * 10, 32, 3, pip);
       }
-
-      Color arc_col = id(heating_active)
-        ? Color(0xE0, 0x55, 0x20) : Color(0x1A, 0x60, 0x90);
-      int seg_end = (int)(segments * curFrac);
-      for (int s = 0; s < seg_end; s++) {
-        float a = startA + arcSpan * s / (float)segments;
-        int tx = cx + (int)(R * cosf(a));
-        int ty = cy + (int)(R * sinf(a));
-        it.filled_circle(tx, ty, 4, arc_col);
-      }
-
-      float tgtA = startA + arcSpan * tgtFrac;
-      Color tick_col = id(editing_mode)
-        ? Color(0xFF, 0xAA, 0x00) : Color(0x44, 0xAA, 0xFF);
-      for (int r = R - 12; r <= R + 10; r++) {
-        it.filled_circle(
-          cx + (int)(r * cosf(tgtA)),
-          cy + (int)(r * sinf(tgtA)),
-          2, tick_col);
-      }
-
-      if (id(heating_active))
-        it.filled_circle(cx, cy - R + 10, 5, Color(0xE0, 0x55, 0x20));
 
       char buf[16];
-      snprintf(buf, sizeof(buf), "%.1f", id(current_temp));
-      Color temp_col = id(heating_active)
-        ? Color(0xE0, 0x70, 0x40) : Color(0x4A, 0xB0, 0xE0);
-      it.print(cx, cy - 12, id(font_xl),   temp_col,
-               TextAlign::CENTER, buf);
-      it.print(cx, cy + 22, id(font_tiny), Color(0x2A, 0x40, 0x60),
-               TextAlign::CENTER, "current  \xB0""C");
 
-      it.print(cx - R - 8, cy + 22, id(font_tiny),
-               Color(0x1E, 0x34, 0x48), TextAlign::CENTER, "5");
-      it.print(cx,          cy - R - 16, id(font_tiny),
-               Color(0x1E, 0x34, 0x48), TextAlign::CENTER, "20");
-      it.print(cx + R + 8,  cy + 22, id(font_tiny),
-               Color(0x1E, 0x34, 0x48), TextAlign::CENTER, "35");
+      if (id(selected_control) == 0) {
+        // ── Screen 0: Heater control ──────────────────────────────────
 
-      int px = 196, pw = 118;
+        int cx = 120, cy = 148, R = 90;
+        float minT = 5.0f, maxT = 35.0f;
+        float tgtFrac = std::min(1.0f, std::max(0.0f,
+                         (id(target_temp) - minT) / (maxT - minT)));
+        float startA = M_PI * 0.75f;
+        float arcSpan = M_PI * 1.5f;
+        int segments = 60;
 
-      Color tgt_bg  = id(editing_mode)
-        ? Color(0x1A, 0x10, 0x00) : Color(0x0C, 0x15, 0x20);
-      Color tgt_bdr = id(editing_mode)
-        ? Color(0xFF, 0x88, 0x00) : Color(0x0E, 0x25, 0x35);
-      it.filled_rectangle(px, 30, pw, 58, tgt_bg);
-      it.rectangle(px, 30, pw, 58, tgt_bdr);
-      it.print(px + 8, 34, id(font_tiny), Color(0x2A, 0x40, 0x60),
-               TextAlign::TOP_LEFT, "TARGET");
-      snprintf(buf, sizeof(buf), "%.1f", id(target_temp));
-      Color tgt_val_col = id(editing_mode)
-        ? Color(0xFF, 0xAA, 0x00) : Color(0xDD, 0xDD, 0xEE);
-      it.print(px + 8,  52, id(font_large), tgt_val_col,
-               TextAlign::TOP_LEFT, buf);
-      it.print(px + 96, 52, id(font_small), Color(0x2A, 0x40, 0x60),
-               TextAlign::TOP_LEFT, "\xB0""C");
-      if (id(editing_mode)) {
-        it.print(px + 8, 76, id(font_tiny), Color(0xAA, 0x66, 0x00),
-                 TextAlign::TOP_LEFT, "< rot  click=save >");
+        for (int s = 0; s < segments; s++) {
+          float a = startA + arcSpan * s / (float)segments;
+          int tx = cx + (int)(R * cosf(a));
+          int ty = cy + (int)(R * sinf(a));
+          it.filled_circle(tx, ty, 4, Color(0x0F, 0x1E, 0x2E));
+        }
+
+        Color arc_col = id(editing_mode)
+          ? Color(0xFF, 0xAA, 0x00) : Color(0x1A, 0x60, 0x90);
+        int seg_end = (int)(segments * tgtFrac);
+        for (int s = 0; s < seg_end; s++) {
+          float a = startA + arcSpan * s / (float)segments;
+          int tx = cx + (int)(R * cosf(a));
+          int ty = cy + (int)(R * sinf(a));
+          it.filled_circle(tx, ty, 4, arc_col);
+        }
+
+        it.print(cx, 43, id(font_tiny), Color(0x2A, 0x40, 0x60),
+                 TextAlign::CENTER, "TARGET");
+
+        snprintf(buf, sizeof(buf), "%.1f", id(target_temp));
+        Color tgt_col = id(editing_mode)
+          ? Color(0xFF, 0xAA, 0x00) : Color(0xDD, 0xDD, 0xEE);
+        it.print(cx, cy, id(font_xl), tgt_col, TextAlign::CENTER, buf);
+        it.print(cx, cy + 28, id(font_small), Color(0x2A, 0x40, 0x60),
+                 TextAlign::CENTER, "\xB0""C");
+
+        if (id(editing_mode)) {
+          it.print(cx, cy + 46, id(font_tiny), Color(0xAA, 0x66, 0x00),
+                   TextAlign::CENTER, "< rotate  push=save >");
+        } else {
+          it.print(cx, cy + 46, id(font_tiny), Color(0x1A, 0x3A, 0x5A),
+                   TextAlign::CENTER, "push to edit");
+        }
+
+        it.print(36,  223, id(font_tiny), Color(0x1E, 0x34, 0x48),
+                 TextAlign::CENTER, "5");
+        it.print(204, 223, id(font_tiny), Color(0x1E, 0x34, 0x48),
+                 TextAlign::CENTER, "35");
+
+        it.filled_rectangle(20, 235, 200, 1, Color(0x0E, 0x25, 0x35));
+        it.print(cx, 244, id(font_tiny), Color(0x2A, 0x40, 0x60),
+                 TextAlign::CENTER, "CURRENT  \xB0""C");
+        snprintf(buf, sizeof(buf), "%.1f", id(current_temp));
+        Color cur_col = id(heating_active)
+          ? Color(0xE0, 0x70, 0x40) : Color(0x4A, 0xB0, 0xE0);
+        it.print(cx, 262, id(font_large), cur_col, TextAlign::CENTER, buf);
+
+        const char* status_str;
+        Color status_col;
+        if (id(heating_active)) {
+          status_str = "HEATING"; status_col = Color(0xE0, 0x55, 0x20);
+        } else {
+          status_str = "IDLE";    status_col = Color(0x2A, 0x8A, 0x40);
+        }
+        it.print(cx, 291, id(font_small), status_col, TextAlign::CENTER, status_str);
+
+        it.filled_rectangle(0, 308, 240, 12, Color(0x06, 0x0B, 0x12));
+        it.print(cx, 314, id(font_tiny), Color(0x1A, 0x30, 0x50),
+                 TextAlign::CENTER, "ENC push=edit/save");
+
+      } else if (id(selected_control) == 1) {
+        // ── Screen 1: Temperature overview ───────────────────────────
+
+        // Outside card
+        it.filled_rectangle(12, 44, 216, 118, Color(0x0C, 0x15, 0x20));
+        it.rectangle(12, 44, 216, 118, Color(0x0E, 0x25, 0x35));
+        it.print(24, 54, id(font_tiny), Color(0x2A, 0x40, 0x60),
+                 TextAlign::TOP_LEFT, "OUTSIDE");
+        snprintf(buf, sizeof(buf), "%.1f", id(outside_temp));
+        it.print(120, 103, id(font_xl), Color(0x4A, 0xB0, 0xE0),
+                 TextAlign::CENTER, buf);
+        it.print(120, 145, id(font_small), Color(0x2A, 0x40, 0x60),
+                 TextAlign::CENTER, "\xB0""C");
+
+        // Inside card
+        it.filled_rectangle(12, 174, 216, 118, Color(0x0C, 0x15, 0x20));
+        it.rectangle(12, 174, 216, 118, Color(0x0E, 0x25, 0x35));
+        it.print(24, 184, id(font_tiny), Color(0x2A, 0x40, 0x60),
+                 TextAlign::TOP_LEFT, "INSIDE");
+        snprintf(buf, sizeof(buf), "%.1f", id(inside_temp));
+        it.print(120, 233, id(font_xl), Color(0x4A, 0xB0, 0xE0),
+                 TextAlign::CENTER, buf);
+        it.print(120, 275, id(font_small), Color(0x2A, 0x40, 0x60),
+                 TextAlign::CENTER, "\xB0""C");
+
+        it.filled_rectangle(0, 308, 240, 12, Color(0x06, 0x0B, 0x12));
+        it.print(120, 314, id(font_tiny), Color(0x1A, 0x30, 0x50),
+                 TextAlign::CENTER, "rotate to switch screen");
+
       } else {
-        it.print(px + 8, 76, id(font_tiny), Color(0x1A, 0x3A, 0x5A),
-                 TextAlign::TOP_LEFT, "click to edit");
+        // ── Screen 2: Hot water ───────────────────────────────────────
+
+        // Temperature card
+        it.filled_rectangle(12, 44, 216, 118, Color(0x0C, 0x15, 0x20));
+        it.rectangle(12, 44, 216, 118, Color(0x0E, 0x25, 0x35));
+        it.print(24, 54, id(font_tiny), Color(0x2A, 0x40, 0x60),
+                 TextAlign::TOP_LEFT, "HOT WATER TEMP");
+        snprintf(buf, sizeof(buf), "%.1f", id(hw_temp));
+        Color hw_temp_col = id(hw_temp) >= 55.0f ? Color(0xE0, 0x70, 0x40) :
+                            id(hw_temp) >= 40.0f ? Color(0xCC, 0xAA, 0x20) :
+                                                   Color(0x4A, 0xB0, 0xE0);
+        it.print(120, 103, id(font_xl), hw_temp_col, TextAlign::CENTER, buf);
+        it.print(120, 145, id(font_small), Color(0x2A, 0x40, 0x60),
+                 TextAlign::CENTER, "\xB0""C");
+
+        // Minutes card
+        it.filled_rectangle(12, 174, 216, 118, Color(0x0C, 0x15, 0x20));
+        it.rectangle(12, 174, 216, 118, Color(0x0E, 0x25, 0x35));
+        it.print(24, 184, id(font_tiny), Color(0x2A, 0x40, 0x60),
+                 TextAlign::TOP_LEFT, "AVAILABLE");
+        snprintf(buf, sizeof(buf), "%d", (int)id(hw_minutes));
+        Color hw_min_col = id(hw_minutes) >= 30.0f ? Color(0x2A, 0x8A, 0x40) :
+                           id(hw_minutes) >= 10.0f ? Color(0xCC, 0xAA, 0x20) :
+                                                     Color(0xE0, 0x55, 0x20);
+        it.print(120, 233, id(font_xl), hw_min_col, TextAlign::CENTER, buf);
+        it.print(120, 275, id(font_small), Color(0x2A, 0x40, 0x60),
+                 TextAlign::CENTER, "min");
+
+        it.filled_rectangle(0, 308, 240, 12, Color(0x06, 0x0B, 0x12));
+        it.print(120, 314, id(font_tiny), Color(0x1A, 0x30, 0x50),
+                 TextAlign::CENTER, "rotate to switch screen");
       }
-
-      const char* mode_labels[] = {"OFF", "ECO", "COMFORT"};
-      Color mode_bg[]  = {Color(0x2A,0x10,0x10),
-                          Color(0x0A,0x1F,0x12),
-                          Color(0x0A,0x0E,0x20)};
-      Color mode_txt[] = {Color(0xAA,0x30,0x30),
-                          Color(0x2A,0x8A,0x40),
-                          Color(0x30,0x60,0xCC)};
-      it.filled_rectangle(px, 94, pw, 36, mode_bg[id(heater_mode)]);
-      it.rectangle(px, 94, pw, 36, Color(0x0E, 0x25, 0x35));
-      it.print(px + 8,  98, id(font_tiny),  Color(0x2A,0x40,0x60),
-               TextAlign::TOP_LEFT, "MODE");
-      it.print(px + 8, 110, id(font_small), mode_txt[id(heater_mode)],
-               TextAlign::TOP_LEFT, mode_labels[id(heater_mode)]);
-
-      it.filled_rectangle(px, 136, pw, 36, Color(0x0C,0x15,0x20));
-      it.rectangle(px, 136, pw, 36, Color(0x0E,0x25,0x35));
-      it.print(px + 8, 140, id(font_tiny), Color(0x2A,0x40,0x60),
-               TextAlign::TOP_LEFT, "STATUS");
-      const char* status_str;
-      Color status_col;
-      if (id(heating_active)) {
-        status_str = "HEATING";   status_col = Color(0xE0,0x55,0x20);
-      } else if (id(current_temp) >= id(target_temp) - 0.2f) {
-        status_str = "AT TARGET"; status_col = Color(0x2A,0x8A,0x40);
-      } else {
-        status_str = "IDLE";      status_col = Color(0x2A,0x40,0x60);
-      }
-      it.print(px + 8, 152, id(font_small), status_col,
-               TextAlign::TOP_LEFT, status_str);
-
-      it.filled_rectangle(px, 178, pw, 36, Color(0x0C,0x15,0x20));
-      it.rectangle(px, 178, pw, 36, Color(0x0E,0x25,0x35));
-      it.print(px + 8, 182, id(font_tiny), Color(0x2A,0x40,0x60),
-               TextAlign::TOP_LEFT, "DELTA");
-      float delta = id(target_temp) - id(current_temp);
-      snprintf(buf, sizeof(buf), "%+.1f \xB0""C", delta);
-      Color delta_col = delta > 0.5f
-        ? Color(0xE0,0x70,0x40) : Color(0x2A,0x8A,0x60);
-      it.print(px + 8, 194, id(font_small), delta_col,
-               TextAlign::TOP_LEFT, buf);
-
-      it.filled_rectangle(0, 226, 320, 14, Color(0x06,0x0B,0x12));
-      it.print(8,   228, id(font_tiny), Color(0x1A,0x30,0x50),
-               TextAlign::TOP_LEFT,  "KEY0 next");
-      it.print(312, 228, id(font_tiny), Color(0x1A,0x30,0x50),
-               TextAlign::TOP_RIGHT, "ENC push=edit/save");
 
 # ── Buttons ───────────────────────────────────────────────────────────
 binary_sensor:
@@ -319,10 +368,6 @@ binary_sensor:
     on_press:
       then:
         - script.execute: wake_screen
-        - lambda: |-
-            if (id(sleep_ticks) != 0) return;
-            if (!id(editing_mode))
-              id(selected_control) = (id(selected_control) + 1) % id(num_controls);
 
   - platform: gpio
     pin:
@@ -331,18 +376,19 @@ binary_sensor:
       inverted: true
     name: "Encoder Push"
     filters:
-      - delayed_on: 20ms
+      - delayed_on_off: 25ms
     on_press:
       then:
         - script.execute: wake_screen
         - lambda: |-
-            if (id(sleep_ticks) != 0) return;
+            if (id(was_sleeping)) return;
+            if (id(selected_control) != 0) return;
             id(editing_mode) = !id(editing_mode);
             ESP_LOGI("main", "editing_mode = %s",
                      id(editing_mode) ? "true" : "false");
         - if:
             condition:
-              lambda: 'return !id(editing_mode) && id(sleep_ticks) == 0;'
+              lambda: 'return !id(editing_mode) && !id(was_sleeping) && id(selected_control) == 0;'
             then:
               - mqtt.publish:
                   topic: "home/heater/target_temp/set"
@@ -361,26 +407,44 @@ sensor:
       number: GPIO33
       mode: INPUT_PULLUP
     name: "Rotary Encoder"
-    resolution: 2
+    resolution: 1
     on_clockwise:
       then:
         - script.execute: wake_screen
         - lambda: |-
-            if (!id(editing_mode)) return;
-            ESP_LOGI("main", "CW target=%.1f", id(target_temp));
-            switch (id(selected_control)) {
-              case 0:
-                id(target_temp) = std::min(id(target_temp) + 0.5f, 30.0f);
-                break;
+            uint32_t now = millis();
+            bool bounce = (id(enc_last_dir) == -1) &&
+                          ((now - (uint32_t)id(enc_last_ms)) < 80U);
+            id(enc_last_dir) = 1;
+            id(enc_last_ms) = (int)now;
+            if (bounce || id(was_sleeping)) return;
+            if (id(editing_mode)) {
+              switch (id(selected_control)) {
+                case 0:
+                  id(target_temp) = std::min(id(target_temp) + 0.5f, 30.0f);
+                  break;
+              }
+            } else {
+              id(editing_mode) = false;
+              id(selected_control) = (id(selected_control) + 1) % id(num_controls);
             }
     on_anticlockwise:
       then:
         - script.execute: wake_screen
         - lambda: |-
-            if (!id(editing_mode)) return;
-            ESP_LOGI("main", "CCW target=%.1f", id(target_temp));
-            switch (id(selected_control)) {
-              case 0:
-                id(target_temp) = std::max(id(target_temp) - 0.5f, 5.0f);
-                break;
+            uint32_t now = millis();
+            bool bounce = (id(enc_last_dir) == 1) &&
+                          ((now - (uint32_t)id(enc_last_ms)) < 80U);
+            id(enc_last_dir) = -1;
+            id(enc_last_ms) = (int)now;
+            if (bounce || id(was_sleeping)) return;
+            if (id(editing_mode)) {
+              switch (id(selected_control)) {
+                case 0:
+                  id(target_temp) = std::max(id(target_temp) - 0.5f, 5.0f);
+                  break;
+              }
+            } else {
+              id(editing_mode) = false;
+              id(selected_control) = (id(selected_control) - 1 + id(num_controls)) % id(num_controls);
             }
