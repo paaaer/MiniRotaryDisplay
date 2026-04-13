@@ -87,19 +87,19 @@ light:
 font:
   - file: "gfonts://Roboto"
     id: font_tiny
-    size: 14
+    size: 16
   - file: "gfonts://Roboto"
     id: font_small
-    size: 20
+    size: 22
   - file: "gfonts://Roboto"
     id: font_large
-    size: 32
+    size: 36
   - file: "gfonts://Roboto"
     id: font_xl
-    size: 44
+    size: 48
   - file: "gfonts://Roboto"
     id: font_xxl
-    size: 60
+    size: 70
 
 # ── Globals ───────────────────────────────────────────────────────────
 globals:
@@ -239,7 +239,7 @@ display:
         it.filled_circle(228, 17, 4, status_col);
 
         // Thermostat arc
-        int cx = 120, cy = 140, R = 85;
+        int cx = 120, cy = 148, R = 88;
         float minT = 5.0f, maxT = 35.0f;
         float frac = std::min(1.0f, std::max(0.0f,
                       (id(target_temp) - minT) / (maxT - minT)));
@@ -283,26 +283,26 @@ display:
         snprintf(buf, sizeof(buf), "%.1f", id(current_temp));
         it.print(cx, cy - 10, id(font_xxl), TEXT_MAIN,
                  TextAlign::CENTER, buf);
-        it.print(cx + 72, cy - 40, id(font_small), TEXT_DIM,
+        it.print(cx + 78, cy - 46, id(font_small), TEXT_DIM,
                  TextAlign::TOP_LEFT, "\xB0""C");
 
         // Target temperature
         snprintf(buf, sizeof(buf), "%.1f", id(target_temp));
         Color tgt_col = id(editing_mode) ? ACCENT : TEXT_DIM;
-        it.print(cx, cy + 52, id(font_large), tgt_col,
+        it.print(cx, cy + 56, id(font_large), tgt_col,
                  TextAlign::CENTER, buf);
 
         // Status
         const char* status_txt = id(heating_active) ? "Heating" : "Idle";
-        it.print(cx, cy + 84, id(font_small), status_col,
+        it.print(cx, cy + 90, id(font_small), status_col,
                  TextAlign::CENTER, status_txt);
 
         // Bottom hint
         if (id(editing_mode)) {
-          it.print(cx, 300, id(font_tiny), ACCENT,
+          it.print(cx, 308, id(font_tiny), ACCENT,
                    TextAlign::CENTER, "Rotate \xB7 Push = Save");
         } else {
-          it.print(cx, 300, id(font_tiny), TEXT_DIM,
+          it.print(cx, 308, id(font_tiny), TEXT_DIM,
                    TextAlign::CENTER, "Push to edit");
         }
 
@@ -315,26 +315,26 @@ display:
                  TextAlign::TOP_LEFT, "$PAGE1_TITLE");
 
         // Outside card
-        it.filled_rectangle(12, 50, 216, 118, CARD);
-        it.rectangle(12, 50, 216, 118, CARD_EDGE);
+        it.filled_rectangle(12, 50, 216, 122, CARD);
+        it.rectangle(12, 50, 216, 122, CARD_EDGE);
         it.print(24, 60, id(font_tiny), TEXT_DIM,
                  TextAlign::TOP_LEFT, "OUTSIDE");
         snprintf(buf, sizeof(buf), "%.1f", id(outside_temp));
-        it.print(120, 109, id(font_xxl), ACCENT, TextAlign::CENTER, buf);
-        it.print(120, 153, id(font_small), TEXT_DIM,
+        it.print(120, 112, id(font_xxl), ACCENT, TextAlign::CENTER, buf);
+        it.print(120, 158, id(font_small), TEXT_DIM,
                  TextAlign::CENTER, "\xB0""C");
 
         // Inside card
-        it.filled_rectangle(12, 176, 216, 118, CARD);
-        it.rectangle(12, 176, 216, 118, CARD_EDGE);
-        it.print(24, 186, id(font_tiny), TEXT_DIM,
+        it.filled_rectangle(12, 180, 216, 122, CARD);
+        it.rectangle(12, 180, 216, 122, CARD_EDGE);
+        it.print(24, 190, id(font_tiny), TEXT_DIM,
                  TextAlign::TOP_LEFT, "INSIDE");
         snprintf(buf, sizeof(buf), "%.1f", id(inside_temp));
-        it.print(120, 235, id(font_xxl), ACCENT, TextAlign::CENTER, buf);
-        it.print(120, 279, id(font_small), TEXT_DIM,
+        it.print(120, 242, id(font_xxl), ACCENT, TextAlign::CENTER, buf);
+        it.print(120, 288, id(font_small), TEXT_DIM,
                  TextAlign::CENTER, "\xB0""C");
 
-        it.print(120, 306, id(font_tiny), TEXT_DIM,
+        it.print(120, 313, id(font_tiny), TEXT_DIM,
                  TextAlign::CENTER, "Rotate to switch");
 
       } else {
@@ -346,30 +346,30 @@ display:
                  TextAlign::TOP_LEFT, "$PAGE2_TITLE");
 
         // Temperature card
-        it.filled_rectangle(12, 50, 216, 118, CARD);
-        it.rectangle(12, 50, 216, 118, CARD_EDGE);
+        it.filled_rectangle(12, 50, 216, 122, CARD);
+        it.rectangle(12, 50, 216, 122, CARD_EDGE);
         it.print(24, 60, id(font_tiny), TEXT_DIM,
                  TextAlign::TOP_LEFT, "TEMPERATURE");
         snprintf(buf, sizeof(buf), "%.1f", id(hw_temp));
         Color hw_col = id(hw_temp) >= 55.0f ? GOOD :
                        id(hw_temp) >= 40.0f ? WARN : BAD;
-        it.print(120, 109, id(font_xxl), hw_col, TextAlign::CENTER, buf);
-        it.print(120, 153, id(font_small), TEXT_DIM,
+        it.print(120, 112, id(font_xxl), hw_col, TextAlign::CENTER, buf);
+        it.print(120, 158, id(font_small), TEXT_DIM,
                  TextAlign::CENTER, "\xB0""C");
 
         // Minutes card
-        it.filled_rectangle(12, 176, 216, 118, CARD);
-        it.rectangle(12, 176, 216, 118, CARD_EDGE);
-        it.print(24, 186, id(font_tiny), TEXT_DIM,
+        it.filled_rectangle(12, 180, 216, 122, CARD);
+        it.rectangle(12, 180, 216, 122, CARD_EDGE);
+        it.print(24, 190, id(font_tiny), TEXT_DIM,
                  TextAlign::TOP_LEFT, "AVAILABLE");
         snprintf(buf, sizeof(buf), "%d", (int)id(hw_minutes));
         Color min_col = id(hw_minutes) >= 30.0f ? GOOD :
                         id(hw_minutes) >= 10.0f ? WARN : BAD;
-        it.print(120, 235, id(font_xxl), min_col, TextAlign::CENTER, buf);
-        it.print(120, 279, id(font_small), TEXT_DIM,
+        it.print(120, 242, id(font_xxl), min_col, TextAlign::CENTER, buf);
+        it.print(120, 288, id(font_small), TEXT_DIM,
                  TextAlign::CENTER, "min");
 
-        it.print(120, 306, id(font_tiny), TEXT_DIM,
+        it.print(120, 313, id(font_tiny), TEXT_DIM,
                  TextAlign::CENTER, "Rotate to switch");
       }
 
