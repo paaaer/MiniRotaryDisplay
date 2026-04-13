@@ -252,24 +252,24 @@ display:
         float arcSpan = M_PI * 1.5f;
         int segments = 50;
 
-        // Background arc — solid 3px stroke via 3 radii
+        // Background arc — solid 6px stroke via 6 radii
         for (int s = 0; s < segments - 1; s++) {
           float a1 = startA + arcSpan * s / (float)segments;
           float a2 = startA + arcSpan * (s + 1) / (float)segments;
-          for (int r = R - 1; r <= R + 1; r++) {
+          for (int r = R - 3; r <= R + 2; r++) {
             it.line(cx + (int)(r * cosf(a1)), cy + (int)(r * sinf(a1)),
                     cx + (int)(r * cosf(a2)), cy + (int)(r * sinf(a2)),
                     Color(0x05, 0x0A, 0x12));
           }
         }
 
-        // Active arc — solid 3px stroke drawn on top
+        // Active arc — solid 6px stroke drawn on top
         Color arc_col = id(editing_mode) ? ACCENT : BAD;
         int end_seg = (int)(segments * frac);
         for (int s = 0; s < end_seg - 1; s++) {
           float a1 = startA + arcSpan * s / (float)segments;
           float a2 = startA + arcSpan * (s + 1) / (float)segments;
-          for (int r = R - 1; r <= R + 1; r++) {
+          for (int r = R - 3; r <= R + 2; r++) {
             it.line(cx + (int)(r * cosf(a1)), cy + (int)(r * sinf(a1)),
                     cx + (int)(r * cosf(a2)), cy + (int)(r * sinf(a2)),
                     arc_col);
@@ -281,7 +281,7 @@ display:
           float a = startA + arcSpan * (end_seg - 0.5f) / (float)segments;
           int x = cx + (int)(R * cosf(a));
           int y = cy + (int)(R * sinf(a));
-          it.filled_circle(x, y, 5, TEXT_MAIN);
+          it.filled_circle(x, y, 7, TEXT_MAIN);
         }
 
         // Current temperature
