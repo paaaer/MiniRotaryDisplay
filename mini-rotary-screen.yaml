@@ -239,8 +239,8 @@ display:
 
         // Top bar
         it.filled_rectangle(0, 0, 240, 34, CARD);
-        it.print(10, 8, id(font_small), TEXT_DIM,
-                 TextAlign::TOP_LEFT, "$PAGE0_TITLE");
+        it.print(120, 17, id(font_small), TEXT_DIM,
+                 TextAlign::CENTER, "$PAGE0_TITLE");
         it.filled_circle(228, 17, 4, status_col);
 
         // Thermostat arc
@@ -316,8 +316,8 @@ display:
 
         // Top bar
         it.filled_rectangle(0, 0, 240, 34, CARD);
-        it.print(10, 8, id(font_small), TEXT_DIM,
-                 TextAlign::TOP_LEFT, "$PAGE1_TITLE");
+        it.print(120, 17, id(font_small), TEXT_DIM,
+                 TextAlign::CENTER, "$PAGE1_TITLE");
 
         // Outside card
         it.filled_rectangle(12, 50, 216, 122, CARD);
@@ -347,8 +347,8 @@ display:
 
         // Top bar
         it.filled_rectangle(0, 0, 240, 34, CARD);
-        it.print(10, 8, id(font_small), TEXT_DIM,
-                 TextAlign::TOP_LEFT, "$PAGE2_TITLE");
+        it.print(120, 17, id(font_small), TEXT_DIM,
+                 TextAlign::CENTER, "$PAGE2_TITLE");
 
         // Temperature card
         it.filled_rectangle(12, 50, 216, 122, CARD);
