@@ -319,20 +319,20 @@ display:
         it.rectangle(12, 50, 216, 122, CARD_EDGE);
         it.print(24, 60, id(font_tiny), TEXT_DIM,
                  TextAlign::TOP_LEFT, "OUTSIDE");
+        it.print(220, 60, id(font_tiny), TEXT_DIM,
+                 TextAlign::TOP_RIGHT, "\xB0""C");
         snprintf(buf, sizeof(buf), "%.1f", id(outside_temp));
-        it.print(120, 112, id(font_xxl), ACCENT, TextAlign::CENTER, buf);
-        it.print(120, 158, id(font_small), TEXT_DIM,
-                 TextAlign::CENTER, "\xB0""C");
+        it.print(120, 111, id(font_xxl), ACCENT, TextAlign::CENTER, buf);
 
         // Inside card
         it.filled_rectangle(12, 180, 216, 122, CARD);
         it.rectangle(12, 180, 216, 122, CARD_EDGE);
         it.print(24, 190, id(font_tiny), TEXT_DIM,
                  TextAlign::TOP_LEFT, "INSIDE");
+        it.print(220, 190, id(font_tiny), TEXT_DIM,
+                 TextAlign::TOP_RIGHT, "\xB0""C");
         snprintf(buf, sizeof(buf), "%.1f", id(inside_temp));
-        it.print(120, 242, id(font_xxl), ACCENT, TextAlign::CENTER, buf);
-        it.print(120, 288, id(font_small), TEXT_DIM,
-                 TextAlign::CENTER, "\xB0""C");
+        it.print(120, 241, id(font_xxl), ACCENT, TextAlign::CENTER, buf);
 
         it.print(120, 313, id(font_tiny), TEXT_DIM,
                  TextAlign::CENTER, "Rotate to switch");
@@ -350,24 +350,24 @@ display:
         it.rectangle(12, 50, 216, 122, CARD_EDGE);
         it.print(24, 60, id(font_tiny), TEXT_DIM,
                  TextAlign::TOP_LEFT, "TEMPERATURE");
+        it.print(220, 60, id(font_tiny), TEXT_DIM,
+                 TextAlign::TOP_RIGHT, "\xB0""C");
         snprintf(buf, sizeof(buf), "%.1f", id(hw_temp));
         Color hw_col = id(hw_temp) >= 55.0f ? GOOD :
                        id(hw_temp) >= 40.0f ? WARN : BAD;
-        it.print(120, 112, id(font_xxl), hw_col, TextAlign::CENTER, buf);
-        it.print(120, 158, id(font_small), TEXT_DIM,
-                 TextAlign::CENTER, "\xB0""C");
+        it.print(120, 111, id(font_xxl), hw_col, TextAlign::CENTER, buf);
 
         // Minutes card
         it.filled_rectangle(12, 180, 216, 122, CARD);
         it.rectangle(12, 180, 216, 122, CARD_EDGE);
         it.print(24, 190, id(font_tiny), TEXT_DIM,
                  TextAlign::TOP_LEFT, "AVAILABLE");
+        it.print(220, 190, id(font_tiny), TEXT_DIM,
+                 TextAlign::TOP_RIGHT, "min");
         snprintf(buf, sizeof(buf), "%d", (int)id(hw_minutes));
         Color min_col = id(hw_minutes) >= 30.0f ? GOOD :
                         id(hw_minutes) >= 10.0f ? WARN : BAD;
-        it.print(120, 242, id(font_xxl), min_col, TextAlign::CENTER, buf);
-        it.print(120, 288, id(font_small), TEXT_DIM,
-                 TextAlign::CENTER, "min");
+        it.print(120, 241, id(font_xxl), min_col, TextAlign::CENTER, buf);
 
         it.print(120, 313, id(font_tiny), TEXT_DIM,
                  TextAlign::CENTER, "Rotate to switch");
