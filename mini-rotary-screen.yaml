@@ -87,19 +87,19 @@ light:
 font:
   - file: "gfonts://Roboto"
     id: font_tiny
-    size: 12
+    size: 14
   - file: "gfonts://Roboto"
     id: font_small
-    size: 18
+    size: 20
   - file: "gfonts://Roboto"
     id: font_large
-    size: 28
+    size: 32
   - file: "gfonts://Roboto"
     id: font_xl
-    size: 38
+    size: 44
   - file: "gfonts://Roboto"
     id: font_xxl
-    size: 52
+    size: 60
 
 # ── Globals ───────────────────────────────────────────────────────────
 globals:
@@ -283,18 +283,18 @@ display:
         snprintf(buf, sizeof(buf), "%.1f", id(current_temp));
         it.print(cx, cy - 10, id(font_xxl), TEXT_MAIN,
                  TextAlign::CENTER, buf);
-        it.print(cx + 62, cy - 36, id(font_small), TEXT_DIM,
+        it.print(cx + 72, cy - 40, id(font_small), TEXT_DIM,
                  TextAlign::TOP_LEFT, "\xB0""C");
 
         // Target temperature
         snprintf(buf, sizeof(buf), "%.1f", id(target_temp));
         Color tgt_col = id(editing_mode) ? ACCENT : TEXT_DIM;
-        it.print(cx, cy + 40, id(font_large), tgt_col,
+        it.print(cx, cy + 52, id(font_large), tgt_col,
                  TextAlign::CENTER, buf);
 
         // Status
         const char* status_txt = id(heating_active) ? "Heating" : "Idle";
-        it.print(cx, cy + 70, id(font_small), status_col,
+        it.print(cx, cy + 84, id(font_small), status_col,
                  TextAlign::CENTER, status_txt);
 
         // Bottom hint
